@@ -1,4 +1,5 @@
 const std = @import("std");
+const print = std.debug.print;
 const testing = std.testing;
 
 const code = "500 * 2 + 8 * 10";
@@ -35,31 +36,12 @@ const Parser = struct {
     tokens: [][]const u8,
 
     pub fn init(allocator: std.mem.Allocator, text: []const u8) !Parser {
+        var it = std.mem.splitScalar(u8, text, ' ');
         var list = std.ArrayList([]const u8).init(allocator);
-        var start: usize = 0;
-        for (text, 0..) |ch, i| {
-            if (ch != ' ' and i < text.len - 1) continue;
-
-            if (ch == ' ' and i == start) {
-                start = i + 1;
-                continue;
-            }
-
-            var token: []const u8 = undefined;
-            if (ch == ' ' and i > start) {
-                token = text[start..i];
-                start = i + 1;
-            }
-
-            if (ch != ' ' and i == text.len - 1) {
-                token = text[start..];
-            }
-            std.debug.print("token: {s}\n", .{token});
+        while (it.next()) |token| {
             try list.append(token);
         }
-
-        const tokens = try list.toOwnedSlice();
-        return .{ .tokens = tokens };
+        return .{ .tokens = try list.toOwnedSlice() };
     }
 
     pub fn getNextToken(self: Parser) ![]const u8 {
