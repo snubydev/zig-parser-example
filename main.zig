@@ -132,36 +132,22 @@ fn printBinary(head: *Node) void {
 fn calculate(node: *Node) i32 {
     if (isLeaf(node)) return node.op;
 
-    var l: i32 = 0;
-    var r: i32 = 0;
-    if (node.left) |left| {
-        l = calculate(left);
-    }
-    if (node.right) |right| {
-        r = calculate(right);
-    }
+    const left_value = calculate(node.left.?);
+    const right_value = calculate(node.right.?);
 
     if (node.op == 1) {
-        print("[calc] {d} + {d}\n", .{ l, r });
-        return l + r;
+        print("[calc] {d} + {d}\n", .{ left_value, right_value });
+        return left_value + right_value;
     }
     if (node.op == 2) {
-        print("[calc] {d} * {d}\n", .{ l, r });
-        return l * r;
+        print("[calc] {d} * {d}\n", .{ left_value, right_value });
+        return left_value * right_value;
     }
     return 0;
 }
 
 pub fn main() !void {
     std.debug.print("Hello from zig-parser!\n", .{});
-}
-
-test "operator precedence" {
-    //try testing.expectEqual(@as(u32, 1), getPrecedence("*"));
-    //try testing.expectEqual(@as(u32, 2), getPrecedence("+"));
-    // try testing.expectEqual(@as(u32, 2), getPrecedence("/"));
-    // try testing.expectEqual(@as(u32, 4), getPrecedence("-"));
-    // try testing.expectEqual(@as(u32, 5), getPrecedence("=="));
 }
 
 test "is_operator" {
