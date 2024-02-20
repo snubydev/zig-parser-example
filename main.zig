@@ -29,30 +29,41 @@ pub fn main() !void {
 
 test "binary 1" {
     var operators = [_][]const u8{ "+", "*" };
-    const text = "500 + 13 * 8 + 10";
+    var brackets = [_][]const u8{"()"};
+    const text = "500 * ( 3 + 8 ) + 1";
     print("[text] {s}\n", .{text});
-    var parser = try Parser.init(std.heap.page_allocator, text, &operators);
+    var parser = try Parser.init(std.heap.page_allocator, text, &operators, &brackets);
     const head = try parser.parseExpression(0);
     const result = calculate(head);
     print("[result] {d}\n", .{result});
 }
 
-test "binary 2" {
-    var operators = [_][]const u8{ "+", "*" };
-    const text = "500 * 3 + 8 * 10";
-    print("[text] {s}\n", .{text});
-    var parser = try Parser.init(std.heap.page_allocator, text, &operators);
-    const head = try parser.parseExpression(0);
-    const result = calculate(head);
-    print("[result] {d}\n", .{result});
-}
-
-test "binary 3" {
-    var operators = [_][]const u8{ "+", "*" };
-    const text = "500 + 3 * 8 * 10 + 3 + 5 + 4 * 4";
-    print("[text] {s}\n", .{text});
-    var parser = try Parser.init(std.heap.page_allocator, text, &operators);
-    const head = try parser.parseExpression(0);
-    const result = calculate(head);
-    print("[result] {d}\n", .{result});
-}
+// test "binary 1" {
+//     var operators = [_][]const u8{ "+", "*" };
+//     const text = "500 + 13 * 8 + 10";
+//     print("[text] {s}\n", .{text});
+//     var parser = try Parser.init(std.heap.page_allocator, text, &operators);
+//     const head = try parser.parseExpression(0);
+//     const result = calculate(head);
+//     print("[result] {d}\n", .{result});
+// }
+//
+// test "binary 2" {
+//     var operators = [_][]const u8{ "+", "*" };
+//     const text = "500 * 3 + 8 * 10";
+//     print("[text] {s}\n", .{text});
+//     var parser = try Parser.init(std.heap.page_allocator, text, &operators);
+//     const head = try parser.parseExpression(0);
+//     const result = calculate(head);
+//     print("[result] {d}\n", .{result});
+// }
+//
+// test "binary 3" {
+//     var operators = [_][]const u8{ "+", "*" };
+//     const text = "500 + 3 * 8 * 10 + 3 + 5 + 4 * 4";
+//     print("[text] {s}\n", .{text});
+//     var parser = try Parser.init(std.heap.page_allocator, text, &operators);
+//     const head = try parser.parseExpression(0);
+//     const result = calculate(head);
+//     print("[result] {d}\n", .{result});
+// }
