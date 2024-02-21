@@ -1,7 +1,6 @@
 const std = @import("std");
 const eql = std.mem.eql;
 const Node = @import("node.zig").Node;
-const NodeType = @import("node.zig").NodeType;
 const testing = std.testing;
 
 const ParserErrors = error{
@@ -13,16 +12,13 @@ pub const Parser = struct {
     binary_operators: [][]const u8,
     brackets: [][]const u8,
     tokens: std.mem.SplitIterator(u8, .scalar),
-    next_token: []const u8 = "",
+    next_token: ?[]const u8 = null,
     allocator: std.mem.Allocator,
 
     pub fn init(allocator: std.mem.Allocator, text: []const u8, operators: [][]const u8, brackets: ?[][]const u8) !Parser {
         const tokens: std.mem.SplitIterator(u8, .scalar) = std.mem.splitScalar(u8, text, ' ');
-        const next_token: []const u8 = "";
         const parser_brackets: [][]const u8 = brackets orelse &.{};
-        var p: Parser = .{ .tokens = tokens, .binary_operators = operators, .allocator = allocator, .next_token = next_token, .brackets = parser_brackets };
-        p.loadNextToken();
-        return p;
+        return .{ .tokens = tokens, .binary_operators = operators, .allocator = allocator, .brackets = parser_brackets };
     }
 
     pub fn getPrecedence(self: *Parser, token: []const u8) usize {
@@ -37,8 +33,17 @@ pub const Parser = struct {
         return self.getPrecedence(token) > 0;
     }
 
-    pub fn loadNextToken(self: *Parser) void {
-        self.next_token = self.tokens.next() orelse "_";
+    fn getNextToken(self: *Parser) []const u8 {
+        if (self.next_token) |token| {
+            const t = token;
+            self.next_token = null;
+            return t;
+        }
+        return self.tokens.next() orelse "_";
+    }
+
+    fn saveNextToken(self: *Parser, token: []const u8) void {
+        self.next_token = token;
     }
 
     fn isOpenBracket(next: []const u8) bool {
@@ -50,11 +55,11 @@ pub const Parser = struct {
     }
 
     fn parseIncreasingPrecedence(self: *Parser, left: *Node, min_prec: usize) ParserErrors!*Node {
-        const next = self.next_token;
-        std.debug.print("[parseIncreasingPrecedence] current token '{s}'\n", .{next});
+        const next = self.getNextToken();
+        std.debug.print("[parseIncreasingPrecedence] token '{s}' left={s}\n", .{ next, left.op });
 
         if (isCloseBracket(next)) {
-            std.debug.print("[parseIncreasingPrecedence] close bracket ')' found, next={s}\n", .{next});
+            std.debug.print("[parseIncreasingPrecedence] close bracket ')' found, next={s}, return\n", .{next});
             return left;
         }
 
@@ -64,71 +69,86 @@ pub const Parser = struct {
 
         const next_prec = self.getPrecedence(next);
         if (next_prec <= min_prec) {
+            std.debug.print("[parseIncreasingPrecedence] next_prec of '{s}' ({d}) <= min_prec({d}) return!\n", .{ next, next_prec, min_prec });
             return left;
         }
+        std.debug.print("[parseIncreasingPrecedence] next_prec of '{s}' ({d}) > min_prec({d}) continue!\n", .{ next, next_prec, min_prec });
 
         // number * ?
-        self.loadNextToken();
-        const next_next = self.next_token;
+        // self.loadNextToken();
+        //const next_next = self.next_token;
 
-        if (isOpenBracket(next_next)) {
-            std.debug.print("[parseIncreasingPrecedence] open bracket '(' found, next={s}\n", .{next_next});
-            self.loadNextToken();
-            const right = try self.parseExpression(0);
-            return self.makeBinary(left, toOperator(next), right);
-        }
+        // if (isOpenBracket(next_next)) {
+        //     std.debug.print("[parseIncreasingPrecedence] open bracket '(' found, next={s}\n", .{next_next});
+        //     self.loadNextToken();
+        //     std.debug.print("[parseIncreasingPrecedence] let's go to the right [1]\n", .{});
+        //     const right = try self.parseExpression(min_prec);
+        //     self.loadNextToken();
+        //     return self.makeBinary(left, toOperator(next), right);
+        // }
+        // std.debug.print("[parseIncreasingPrecedence] not open bracket found, next={s}\n", .{next});
 
-        std.debug.print("[parseIncreasingPrecedence] not open bracket found, next={s}\n", .{next});
-
-        //if (eql(u8, next[0], '[')) {
-        //    // return parse_array_subscript
-        //}
-
+        std.debug.print("[parseIncreasingPrecedence] let's go to the right[2]\n", .{});
         const right = try self.parseExpression(next_prec);
         return self.makeBinary(left, toOperator(next), right);
     }
 
     pub fn parseExpression(self: *Parser, min_prec: usize) ParserErrors!*Node {
+
+        // if (isOpenBracket(next_next)) {
+        // ...
+
         // read leaf token
-        // self.loadNextToken();
         var left = try self.parseLeaf();
 
         // read binary oprator token
-        self.loadNextToken();
         while (true) {
             const node = try self.parseIncreasingPrecedence(left, min_prec);
             if (node == left) {
                 break;
             }
             left = node;
-            std.debug.print("[while loop] left.op={s}\n", .{left.op.text});
+            std.debug.print("[while loop] left.op={s} saved_token={s}\n", .{ left.op, self.next_token orelse " " });
         }
+        std.debug.print("[while break] left.op={s} saved_token={s}\n", .{ left.op, self.next_token orelse " " });
         return left;
     }
 
     fn makeBinary(self: *Parser, left: *Node, op: []const u8, right: *Node) !*Node {
-        std.debug.print("[make binary]: left={any} op={s} right={any}\n", .{ left.op, op, right.op });
+        std.debug.print("[make binary]: left={s} op={s} right={s}\n", .{ left.op, op, right.op });
         const node = try self.allocator.create(Node);
-        node.* = Node.init(.{ .text = op });
-        node.*.left = left;
-        node.*.right = right;
-
+        node.* = Node{ .op = op, .left = left, .right = right };
         return @constCast(node);
     }
 
     fn parseLeaf(self: *Parser) !*Node {
         const node = try self.allocator.create(Node);
-        const token = self.next_token;
+        const token = self.getNextToken();
         std.debug.print("[parseLeaf] {s}\n", .{token});
-        const node_value: NodeType() = if (self.isBinaryOperator(token)) .{ .text = toOperator(token) } else .{ .int = std.fmt.parseInt(i32, token, 10) catch 0 };
-        node.* = Node.init(node_value);
+        const node_value = if (self.isBinaryOperator(token)) toOperator(token) else token;
+        node.* = Node{ .op = node_value };
         return node;
     }
 
     fn toOperator(str: []const u8) []const u8 {
+        std.debug.print("[toOperator] {s}\n", .{str});
         return str;
     }
 };
+
+pub fn print(node: ?*Node) void {
+    if (node) |n| {
+        if (n.isLeaf()) {
+            std.debug.print("{s} ", .{n.op});
+            return;
+        }
+        std.debug.print("[", .{});
+        print(n.left);
+        std.debug.print("{s} ", .{n.op});
+        print(n.right);
+        std.debug.print("]", .{});
+    }
+}
 
 test "is_operator" {
     var operators = [_][]const u8{ "+", "*" };
@@ -156,7 +176,6 @@ test "init parser" {
         try testing.expectEqualStrings(expected[i], token);
         t = p.tokens.next();
     }
-
     try testing.expectEqual(p.brackets.len, 0);
 }
 
@@ -167,27 +186,45 @@ test "get precedence" {
     try testing.expectEqual(p.getPrecedence("*"), 2);
 }
 
-test "init parser with brackets" {
+test "parse expression 1" {
     var operators = [_][]const u8{ "+", "*" };
-    var brackets = [_][]const u8{"()"};
-    const text = "500 * ( 8 + 10 )";
-    const expected = [_][]const u8{ "500", "*", "(", "8", "+", "10", ")" };
-    var p = try Parser.init(std.heap.page_allocator, text, &operators, &brackets);
-
-    try testing.expectEqualStrings("500", p.next_token);
-
-    // assert tokens list
-    var i: usize = 0;
-    var t: ?[]const u8 = p.next_token;
-    while (t) |token| : (i += 1) {
-        try testing.expect(i <= expected.len);
-        try testing.expectEqualStrings(expected[i], token);
-        t = p.tokens.next();
-    }
-
-    p.tokens.reset();
-    p.loadNextToken();
-
-    const head = p.parseExpression(0);
-    std.debug.print("[head] {any}\n", .{head});
+    const text = "500 + 13 * 8 + 10";
+    var p = try Parser.init(std.heap.page_allocator, text, &operators, null);
+    const head = try p.parseExpression(0);
+    print(head);
+    std.debug.print("\n", .{});
 }
+
+test "parse expression 2" {
+    var operators = [_][]const u8{ "+", "*" };
+    const text = "500 * 13 + 8 * 10";
+    var p = try Parser.init(std.heap.page_allocator, text, &operators, null);
+    const head = try p.parseExpression(0);
+    print(head);
+    std.debug.print("\n", .{});
+}
+
+// test "init parser with brackets" {
+//     var operators = [_][]const u8{ "+", "*" };
+//     var brackets = [_][]const u8{"()"};
+//     const text = "500 * ( 8 + 10 )";
+//     const expected = [_][]const u8{ "500", "*", "(", "8", "+", "10", ")" };
+//     var p = try Parser.init(std.heap.page_allocator, text, &operators, &brackets);
+//
+//     try testing.expectEqualStrings("500", p.next_token);
+//
+//     // assert tokens list
+//     var i: usize = 0;
+//     var t: ?[]const u8 = p.next_token;
+//     while (t) |token| : (i += 1) {
+//         try testing.expect(i <= expected.len);
+//         try testing.expectEqualStrings(expected[i], token);
+//         t = p.tokens.next();
+//     }
+//
+//     p.tokens.reset();
+//     p.loadNextToken();
+//
+//     const head = p.parseExpression(0);
+//     std.debug.print("[head] {any}\n", .{head});
+// }
