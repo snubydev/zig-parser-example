@@ -59,18 +59,24 @@ pub const Parser = struct {
         return result;
     }
 
-    fn isCloseBracket(next: []const u8) bool {
-        return next.len > 0 and next[0] == ')';
+    fn isCloseBracket(self: *Parser, b: struct { backup: bool }) bool {
+        const next = self.getNextToken() orelse "_";
+        const result = next.len > 0 and next[0] == ')';
+        if (!result) {
+            self.backup(next);
+            return result;
+        }
+        std.debug.print("[parseExpression] L{d}, close backet found ...\n", .{level});
+        if (b.backup) {
+            self.backup(next);
+        }
+        return result;
     }
 
     fn parseIncreasingPrecedence(self: *Parser, left: *Node, min_prec: usize) ParserErrors!*Node {
         const next = self.getNextToken() orelse "_";
         std.debug.print("[parseIncreasingPrecedence] token '{s}' left={s}\n", .{ next, left.op });
 
-        // if (isCloseBracket(next)) {
-        //     std.debug.print("[parseIncreasingPrecedence] close bracket ')' found, next={s}, return\n", .{next});
-        //     return left;
-        //}
         if (!self.isBinaryOperator(next)) {
             return left;
         }
@@ -90,19 +96,13 @@ pub const Parser = struct {
         level += 1;
         defer level -= 1;
         std.debug.print("[parseExpression] L{d}, min_prec={d}\n", .{ level, min_prec });
+
         var left = if (self.isOpenBracket()) try self.parseExpression(0) else try self.parseLeaf();
 
         std.debug.print("[parseExpression] L{d}, min_prec={d} left={s}\n", .{ level, min_prec, left.op });
 
         while (true) {
-            const next_next = self.getNextToken() orelse "_";
-            std.debug.print("[parseExpression] L{d}, left={s} min_prec={d} next_next={s}\n", .{ level, left.op, min_prec, next_next });
-            if (isCloseBracket(next_next)) {
-                std.debug.print("[parseExpression] L{d}, left={s}, close bracket found, break\n", .{ level, left.op });
-                self.backup(next_next);
-                break;
-            }
-            self.backup(next_next);
+            if (self.isCloseBracket(.{ .backup = true })) break;
 
             const node = try self.parseIncreasingPrecedence(left, min_prec);
             if (node == left) {
@@ -111,13 +111,7 @@ pub const Parser = struct {
             left = node;
             std.debug.print("[while loop] L{d}, left.op={s} saved_token={s}\n", .{ level, left.op, self.next_token orelse " " });
 
-            const next_next2 = self.getNextToken() orelse "_";
-            std.debug.print("[parseExpression] L{d}, left={s} min_prec={d} next_next2={s}\n", .{ level, left.op, min_prec, next_next2 });
-            if (isCloseBracket(next_next2)) {
-                std.debug.print("[parseExpression] L{d}, left={s}, close bracket found, break\n", .{ level, left.op });
-                break;
-            }
-            self.backup(next_next2);
+            if (self.isCloseBracket(.{ .backup = false })) break;
         }
         std.debug.print("[while break] L{d}, left.op={s} saved_token={s}\n", .{ level, left.op, self.next_token orelse " " });
         return left;
@@ -261,7 +255,7 @@ test "init parser with brackets" {
 test "parse exression with brackets 3" {
     var operators = [_][]const u8{ "+", "-", "*", "/" };
     var brackets = [_][]const u8{"()"};
-    const text = "( 500 + 8 ) * ( 13 + 10 ) - 1"; //( 1 * 6 + 9 ) / ( 2 + 4 ) - 3";
+    const text = "( 500 + 8 ) * ( 10 + 2 ) - 1"; //( 1 * 6 + 9 ) / ( 2 + 4 ) - 3";
     std.debug.print("\n[text] {s}\n", .{text});
     var p = try Parser.init(std.heap.page_allocator, text, &operators, &brackets);
 
