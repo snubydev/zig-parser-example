@@ -42,7 +42,7 @@ pub const Parser = struct {
         return self.tokens.next() orelse "_";
     }
 
-    fn saveNextToken(self: *Parser, token: []const u8) void {
+    fn backup(self: *Parser, token: []const u8) void {
         self.next_token = token;
     }
 
@@ -70,14 +70,12 @@ pub const Parser = struct {
         const next_prec = self.getPrecedence(next);
         if (next_prec <= min_prec) {
             std.debug.print("[parseIncreasingPrecedence] next_prec of '{s}' ({d}) <= min_prec({d}) return!\n", .{ next, next_prec, min_prec });
+            self.backup(next);
             return left;
         }
         std.debug.print("[parseIncreasingPrecedence] next_prec of '{s}' ({d}) > min_prec({d}) continue!\n", .{ next, next_prec, min_prec });
 
         // number * ?
-        // self.loadNextToken();
-        //const next_next = self.next_token;
-
         // if (isOpenBracket(next_next)) {
         //     std.debug.print("[parseIncreasingPrecedence] open bracket '(' found, next={s}\n", .{next_next});
         //     self.loadNextToken();
