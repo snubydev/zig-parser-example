@@ -78,6 +78,7 @@ pub const Parser = struct {
         std.debug.print("[parseIncreasingPrecedence] token '{s}' left={s}\n", .{ next, left.op });
 
         if (!self.isBinaryOperator(next)) {
+            self.backup(next);
             return left;
         }
         const next_prec = self.getPrecedence(next);
@@ -95,15 +96,11 @@ pub const Parser = struct {
     pub fn parseExpression(self: *Parser, min_prec: usize) ParserErrors!*Node {
         level += 1;
         defer level -= 1;
-        std.debug.print("[parseExpression] L{d}, min_prec={d}\n", .{ level, min_prec });
+        //std.debug.print("[parseExpression] L{d}, min_prec={d}\n", .{ level, min_prec });
 
         var left = if (self.isOpenBracket()) try self.parseExpression(0) else try self.parseLeaf();
 
-        std.debug.print("[parseExpression] L{d}, min_prec={d} left={s}\n", .{ level, min_prec, left.op });
-
         while (true) {
-            if (self.isCloseBracket(.{ .backup = true })) break;
-
             const node = try self.parseIncreasingPrecedence(left, min_prec);
             if (node == left) {
                 break;
@@ -255,7 +252,7 @@ test "init parser with brackets" {
 test "parse exression with brackets 3" {
     var operators = [_][]const u8{ "+", "-", "*", "/" };
     var brackets = [_][]const u8{"()"};
-    const text = "( 500 + 8 ) * ( 10 + 2 ) - 1"; //( 1 * 6 + 9 ) / ( 2 + 4 ) - 3";
+    const text = "( 500 + 8 ) * ( 10 + 2 ) - ( 1 * 6 + 9 ) / 2 - 3 * ( 1 + 1 )";
     std.debug.print("\n[text] {s}\n", .{text});
     var p = try Parser.init(std.heap.page_allocator, text, &operators, &brackets);
 
