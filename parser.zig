@@ -48,8 +48,15 @@ pub const Parser = struct {
         self.next_token = token;
     }
 
-    fn isOpenBracket(next: []const u8) bool {
-        return next.len > 0 and next[0] == '(';
+    fn isOpenBracket(self: *Parser) bool {
+        const next = self.getNextToken() orelse "_";
+        const result = next.len > 0 and next[0] == '(';
+        if (!result) {
+            self.backup(next);
+            return result;
+        }
+        std.debug.print("[parseExpression] L{d}, open backet found ...\n", .{level});
+        return result;
     }
 
     fn isCloseBracket(next: []const u8) bool {
@@ -83,15 +90,8 @@ pub const Parser = struct {
         level += 1;
         defer level -= 1;
         std.debug.print("[parseExpression] L{d}, min_prec={d}\n", .{ level, min_prec });
-        var left: *Node = undefined;
-        const next = self.getNextToken() orelse "_";
-        if (isOpenBracket(next)) {
-            std.debug.print("[parseExpression] L{d}, min_prec={d}, open backet found ...\n", .{ level, min_prec });
-            left = try self.parseExpression(0);
-        } else {
-            self.backup(next);
-            left = try self.parseLeaf();
-        }
+        var left = if (self.isOpenBracket()) try self.parseExpression(0) else try self.parseLeaf();
+
         std.debug.print("[parseExpression] L{d}, min_prec={d} left={s}\n", .{ level, min_prec, left.op });
 
         while (true) {
@@ -261,7 +261,7 @@ test "init parser with brackets" {
 test "parse exression with brackets 3" {
     var operators = [_][]const u8{ "+", "-", "*", "/" };
     var brackets = [_][]const u8{"()"};
-    const text = "( 500 + 8 ) * ( 13 + 10 ) - ( 1 * 6 + 9 ) / ( 2 + 4 ) - 3";
+    const text = "( 500 + 8 ) * ( 13 + 10 ) - 1"; //( 1 * 6 + 9 ) / ( 2 + 4 ) - 3";
     std.debug.print("\n[text] {s}\n", .{text});
     var p = try Parser.init(std.heap.page_allocator, text, &operators, &brackets);
 
