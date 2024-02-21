@@ -174,23 +174,23 @@ test "get precedence" {
     try testing.expectEqual(p.getPrecedence("*"), 2);
 }
 
-// test "parse expression 1" {
-//     var operators = [_][]const u8{ "+", "*" };
-//     const text = "500 + 13 * 8 + 10";
-//     var p = try Parser.init(std.heap.page_allocator, text, &operators, null);
-//     const head = try p.parseExpression(0);
-//     print(head);
-//     std.debug.print("\n", .{});
-// }
-//
-// test "parse expression 2" {
-//     var operators = [_][]const u8{ "+", "*" };
-//     const text = "500 * 13 + 8 * 10";
-//     var p = try Parser.init(std.heap.page_allocator, text, &operators, null);
-//     const head = try p.parseExpression(0);
-//     print(head);
-//     std.debug.print("\n", .{});
-// }
+test "parse expression 1" {
+    var operators = [_][]const u8{ "+", "*" };
+    const text = "500 + 13 * 8 + 10";
+    var p = try Parser.init(std.heap.page_allocator, text, &operators, null);
+    const head = try p.parseExpression(0);
+    print(head);
+    std.debug.print("\n", .{});
+}
+
+test "parse expression 2" {
+    var operators = [_][]const u8{ "+", "*" };
+    const text = "500 * 13 + 8 * 10";
+    var p = try Parser.init(std.heap.page_allocator, text, &operators, null);
+    const head = try p.parseExpression(0);
+    print(head);
+    std.debug.print("\n", .{});
+}
 
 test "init parser with brackets" {
     var operators = [_][]const u8{ "+", "*" };
@@ -213,36 +213,36 @@ test "init parser with brackets" {
     }
 }
 
-// test "parse exression with brackets 1" {
-//     var operators = [_][]const u8{ "+", "*" };
-//     var brackets = [_][]const u8{"()"};
-//     const text = "500 * ( 8 + 10 )";
-//     std.debug.print("\n[text] {s}\n", .{text});
-//     var p = try Parser.init(std.heap.page_allocator, text, &operators, &brackets);
-//
-//     // assert
-//     const head = try p.parseExpression(0);
-//     print(head);
-//     std.debug.print("\n", .{});
-// }
+test "parse exression with brackets 1" {
+    var operators = [_][]const u8{ "+", "*" };
+    var brackets = [_][]const u8{"()"};
+    const text = "500 * ( 8 + 10 )";
+    std.debug.print("\n[text] {s}\n", .{text});
+    var p = try Parser.init(std.heap.page_allocator, text, &operators, &brackets);
 
-// test "parse exression with brackets 2" {
-//     var operators = [_][]const u8{ "+", "*" };
-//     var brackets = [_][]const u8{"()"};
-//     const text = "( 500 + 8 ) * 10";
-//     std.debug.print("\n[text] {s}\n", .{text});
-//     var p = try Parser.init(std.heap.page_allocator, text, &operators, &brackets);
-//
-//     // assert
-//     const head = try p.parseExpression(0);
-//     print(head);
-//     std.debug.print("\n", .{});
-// }
+    // assert
+    const head = try p.parseExpression(0);
+    print(head);
+    std.debug.print("\n", .{});
+}
+
+test "parse exression with brackets 2" {
+    var operators = [_][]const u8{ "+", "*" };
+    var brackets = [_][]const u8{"()"};
+    const text = "( 500 + 8 ) * 10";
+    std.debug.print("\n[text] {s}\n", .{text});
+    var p = try Parser.init(std.heap.page_allocator, text, &operators, &brackets);
+
+    // assert
+    const head = try p.parseExpression(0);
+    print(head);
+    std.debug.print("\n", .{});
+}
 
 test "parse exression with brackets 3" {
     var operators = [_][]const u8{ "+", "-", "*", "/" };
     var brackets = [_][]const u8{"()"};
-    const text = "( 500 + 8 ) * ( 10 + 2 ) - ( 1 * 6 + 9 ) / 2 - 3 * ( 1 + 1 )";
+    const text = "( 500 + 8 ) * ( 10 + 2 ) - ( 3 + 6 * 9 ) / 2 - 3 * ( 1 + 1 )";
     std.debug.print("\n[text] {s}\n", .{text});
     var p = try Parser.init(std.heap.page_allocator, text, &operators, &brackets);
 
