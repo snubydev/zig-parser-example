@@ -122,6 +122,16 @@ pub const Parser = struct {
     fn toOperator(str: []const u8) []const u8 {
         return str;
     }
+
+    pub fn deinit(self: *Parser, node: *Node) void {
+        if (node.left) |n| {
+            self.deinit(n);
+        }
+        if (node.right) |n| {
+            self.deinit(n);
+        }
+        self.allocator.destroy(node);
+    }
 };
 
 pub fn print(node: ?*Node) void {
@@ -179,6 +189,7 @@ test "parse expression 1" {
     const text = "500 + 13 * 8 + 10";
     var p = try Parser.init(std.heap.page_allocator, text, &operators, null);
     const head = try p.parseExpression(0);
+    defer p.deinit(head);
     print(head);
     std.debug.print("\n", .{});
 }
@@ -188,6 +199,7 @@ test "parse expression 2" {
     const text = "500 * 13 + 8 * 10";
     var p = try Parser.init(std.heap.page_allocator, text, &operators, null);
     const head = try p.parseExpression(0);
+    defer p.deinit(head);
     print(head);
     std.debug.print("\n", .{});
 }
@@ -222,6 +234,7 @@ test "parse exression with brackets 1" {
 
     // assert
     const head = try p.parseExpression(0);
+    defer p.deinit(head);
     print(head);
     std.debug.print("\n", .{});
 }
@@ -229,12 +242,13 @@ test "parse exression with brackets 1" {
 test "parse exression with brackets 2" {
     var operators = [_][]const u8{ "+", "*" };
     var brackets = [_][]const u8{"()"};
-    const text = "( 500 + 8 ) * 10";
+    const text = "( lenght1 + width2 ) * count";
     std.debug.print("\n[text] {s}\n", .{text});
     var p = try Parser.init(std.heap.page_allocator, text, &operators, &brackets);
 
     // assert
     const head = try p.parseExpression(0);
+    defer p.deinit(head);
     print(head);
     std.debug.print("\n", .{});
 }
@@ -248,6 +262,7 @@ test "parse exression with brackets 3" {
 
     // assert
     const head = try p.parseExpression(0);
+    defer p.deinit(head);
     print(head);
     std.debug.print("\n", .{});
 }
